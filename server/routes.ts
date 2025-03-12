@@ -1,24 +1,33 @@
 import type { Express } from "express";
-import { createServer, type Server } from "http";
+import { createServer } from "http";
 import { storage } from "./storage";
 import { insertMessageSchema } from "@shared/schema";
-import { fromZodError } from "zod-validation-error";
 
-export async function registerRoutes(app: Express): Promise<Server> {
-  app.post("/api/contact", async (req, res) => {
-    try {
-      const data = insertMessageSchema.parse(req.body);
-      const message = await storage.createMessage(data);
-      res.json(message);
-    } catch (error) {
-      if (error instanceof Error) {
-        res.status(400).json({ message: fromZodError(error).message });
-      } else {
-        res.status(500).json({ message: "Internal server error" });
-      }
-    }
+export async function registerRoutes(app: Express) {
+  app.get("/api/projects", async (_req, res) => {
+    const projects = await storage.getProjects();
+    res.json(projects);
   });
 
-  const httpServer = createServer(app);
-  return httpServer;
+  app.get("/api/projects/:id", async (req, res) => {
+    const project = await storage.getProject(Number(req.params.id));
+    if (!project) {
+      res.status(404).json({ message: "Project not found" });
+      return;
+    }
+    res.json(project);
+  });
+
+  app.post("/api/contact", async (req, res) => {
+    const result = insertMessageSchema.safeParse(req.body);
+    if (!result.success) {
+      res.status(400).json({ message: "Invalid message data" });
+      return;
+    }
+    
+    const message = await storage.createMessage(result.data);
+    res.json(message);
+  });
+
+  return createServer(app);
 }

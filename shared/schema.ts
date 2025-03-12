@@ -1,23 +1,31 @@
-import { pgTable, text, serial, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, json } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
-export const contactMessages = pgTable("contact_messages", {
+export const projects = pgTable("projects", {
+  id: serial("id").primaryKey(),
+  title: text("title").notNull(),
+  description: text("description").notNull(),
+  imageUrl: text("image_url").notNull(),
+  category: text("category").notNull(),
+  details: json("details").$type<{
+    challenge: string;
+    solution: string;
+    outcome: string;
+  }>().notNull(),
+});
+
+export const messages = pgTable("messages", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
   email: text("email").notNull(),
   message: text("message").notNull(),
-  createdAt: timestamp("created_at").defaultNow(),
 });
 
-export const insertMessageSchema = createInsertSchema(contactMessages).pick({
-  name: true,
-  email: true,
-  message: true,
-}).extend({
-  email: z.string().email("Please enter a valid email address"),
-  message: z.string().min(10, "Message must be at least 10 characters"),
-});
+export const insertProjectSchema = createInsertSchema(projects);
+export const insertMessageSchema = createInsertSchema(messages);
 
+export type Project = typeof projects.$inferSelect;
+export type InsertProject = z.infer<typeof insertProjectSchema>;
+export type Message = typeof messages.$inferSelect;
 export type InsertMessage = z.infer<typeof insertMessageSchema>;
-export type Message = typeof contactMessages.$inferSelect;
